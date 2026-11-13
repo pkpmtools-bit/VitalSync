@@ -1,1 +1,1 @@
-/build
+# Gradle /build unignored per user request so APK outputs under app/build/outputs/apk/ are accessible
