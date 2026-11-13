@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User wellness profile, biometrics, lifestyle, work intensity, V4/EN language preference, and daily health goals.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "languageCode": {
+          "type": "string",
+          "enum": ["en", "sk", "cs", "hu", "pl"],
+          "description": "Preferred UI locale (English or Visegrad 4: SK/CZ/HU/PL)."
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["male", "female", "other"]
+        },
+        "heightCm": { "type": "integer", "description": "User height in centimeters." },
+        "weightKg": { "type": "number", "description": "User body weight in kilograms for Hydro Coach hydration calculation." },
+        "lifestyleLevel": {
+          "type": "string",
+          "enum": ["passive", "recreational", "active"]
+        },
+        "workIntensity": {
+          "type": "string",
+          "enum": ["sedentary", "light_physical", "moderate_physical", "heavy_physical"]
+        },
+        "onboardingCompleted": { "type": "boolean" },
+        "dailyWaterGoalMl": { "type": "integer", "description": "Daily hydration goal in milliliters." },
+        "dailyStepsGoal": { "type": "integer", "description": "Daily steps goal." },
+        "dailySleepGoalMinutes": { "type": "integer", "description": "Daily sleep target in minutes." },
+        "restingHeartRateTarget": { "type": "integer", "description": "Resting heart rate target in BPM." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "displayName", "languageCode", "gender", "heightCm", "weightKg", "lifestyleLevel", "workIntensity", "onboardingCompleted", "dailyWaterGoalMl", "dailyStepsGoal", "dailySleepGoalMinutes", "restingHeartRateTarget", "createdAt", "updatedAt"]
+    },
+    "HydrationLog": {
+      "title": "HydrationLog",
+      "description": "Hydro Coach style drink & soup intake entry with hydration factor calculation.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amountMl": { "type": "integer" },
+        "effectiveHydrationMl": { "type": "integer" },
+        "drinkType": {
+          "type": "string",
+          "enum": ["water", "sparkling", "tea", "coffee", "isotonic", "juice", "soup"]
+        },
+        "note": { "type": "string" },
+        "dateKey": { "type": "string" },
+        "loggedAtMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amountMl", "effectiveHydrationMl", "drinkType", "dateKey", "loggedAtMillis", "createdAt", "updatedAt"]
+    },
+    "HeartRateReading": {
+      "title": "HeartRateReading",
+      "description": "Real-time heart rate, SpO2, and HRV reading from FitCloudPro or multi-OS smartwatch.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bpm": { "type": "integer" },
+        "spo2Percent": { "type": "integer" },
+        "hrvMs": { "type": "integer" },
+        "zone": {
+          "type": "string",
+          "enum": ["resting", "fat_burn", "cardio", "peak"]
+        },
+        "sourceDevice": { "type": "string" },
+        "sourceOs": {
+          "type": "string",
+          "enum": ["fitcloudpro", "wear_os", "watchos_bridge", "harmony_os", "zepp_os", "health_connect", "manual"]
+        },
+        "dateKey": { "type": "string" },
+        "recordedAtMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "bpm", "spo2Percent", "hrvMs", "zone", "sourceDevice", "sourceOs", "dateKey", "recordedAtMillis", "createdAt"]
+    },
+    "SleepSession": {
+      "title": "SleepSession",
+      "description": "Sleep stage session synced from smartwatch or Health Connect.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateKey": { "type": "string" },
+        "totalMinutes": { "type": "integer" },
+        "deepMinutes": { "type": "integer" },
+        "lightMinutes": { "type": "integer" },
+        "remMinutes": { "type": "integer" },
+        "awakeMinutes": { "type": "integer" },
+        "qualityScore": { "type": "integer" },
+        "avgBpm": { "type": "integer" },
+        "sourceDevice": { "type": "string" },
+        "startTimeMillis": { "type": "integer" },
+        "endTimeMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateKey", "totalMinutes", "deepMinutes", "lightMinutes", "remMinutes", "awakeMinutes", "qualityScore", "avgBpm", "sourceDevice", "startTimeMillis", "endTimeMillis", "createdAt", "updatedAt"]
+    },
+    "DailyActivitySummary": {
+      "title": "DailyActivitySummary",
+      "description": "Daily Google Fit / Health Connect and FitCloudPro activity summary.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateKey": { "type": "string" },
+        "steps": { "type": "integer" },
+        "activeMinutes": { "type": "integer" },
+        "caloriesBurned": { "type": "integer" },
+        "distanceMeters": { "type": "integer" },
+        "movePoints": { "type": "integer" },
+        "sourceOs": {
+          "type": "string",
+          "enum": ["fitcloudpro", "wear_os", "watchos_bridge", "harmony_os", "zepp_os", "health_connect", "phone_sensor"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateKey", "steps", "activeMinutes", "caloriesBurned", "distanceMeters", "movePoints", "sourceOs", "createdAt", "updatedAt"]
+    },
+    "PairedWatchDevice": {
+      "title": "PairedWatchDevice",
+      "description": "Registered FitCloudPro or multi-OS smartwatch profile and real-time API sync settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "macOrAddress": { "type": "string" },
+        "osType": {
+          "type": "string",
+          "enum": ["fitcloudpro", "wear_os", "watchos_bridge", "harmony_os", "zepp_os", "garmin_connect"]
+        },
+        "protocol": {
+          "type": "string",
+          "enum": ["ble_gatt", "health_connect", "rest_webhook", "companion_sync"]
+        },
+        "batteryPercent": { "type": "integer" },
+        "firmwareVersion": { "type": "string" },
+        "realtimeHrEnabled": { "type": "boolean" },
+        "autoSyncEnabled": { "type": "boolean" },
+        "lastSyncMillis": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "macOrAddress", "osType", "protocol", "batteryPercent", "firmwareVersion", "realtimeHrEnabled", "autoSyncEnabled", "lastSyncMillis", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User wellness profile, biometrics, and goal configuration."
+    },
+    "/users/{userId}/hydration_logs/{logId}": {
+      "schema": { "$ref": "#/entities/HydrationLog" },
+      "description": "Hydration intake records per user (drinks and soups)."
+    },
+    "/users/{userId}/heart_rate_readings/{readingId}": {
+      "schema": { "$ref": "#/entities/HeartRateReading" },
+      "description": "Real-time heart rate, SpO2, and HRV telemetry readings."
+    },
+    "/users/{userId}/sleep_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/SleepSession" },
+      "description": "Sleep stage sessions per user."
+    },
+    "/users/{userId}/activity_daily/{dateKey}": {
+      "schema": { "$ref": "#/entities/DailyActivitySummary" },
+      "description": "Daily steps, calories, distance, and active points per user."
+    },
+    "/users/{userId}/watch_devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/PairedWatchDevice" },
+      "description": "Connected FitCloudPro and multi-OS smartwatch devices per user."
+    }
+  }
+}

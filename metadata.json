@@ -1,0 +1,6 @@
+{
+  "name": "VitalSync",
+  "description": "Unified wellness, hydration, sleep, heart rate, and real-time FitCloudPro and multi-OS smartwatch sync lifestyle app with EN/SK/CZ/HU/PL support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

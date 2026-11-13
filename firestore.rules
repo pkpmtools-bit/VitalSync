@@ -1,0 +1,245 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDateKey(key) {
+      return key is string && key.size() == 10 && key.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    function isValidUserProfile(data, userId) {
+      return data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.languageCode in ['en', 'sk', 'cs', 'hu', 'pl'] &&
+             data.gender in ['male', 'female', 'other'] &&
+             data.heightCm is int && data.heightCm >= 90 && data.heightCm <= 260 &&
+             data.weightKg is number && data.weightKg >= 20 && data.weightKg <= 300 &&
+             data.lifestyleLevel in ['passive', 'recreational', 'active'] &&
+             data.workIntensity in ['sedentary', 'light_physical', 'moderate_physical', 'heavy_physical'] &&
+             data.onboardingCompleted is bool &&
+             data.dailyWaterGoalMl is int && data.dailyWaterGoalMl >= 500 && data.dailyWaterGoalMl <= 10000 &&
+             data.dailyStepsGoal is int && data.dailyStepsGoal >= 1000 && data.dailyStepsGoal <= 100000 &&
+             data.dailySleepGoalMinutes is int && data.dailySleepGoalMinutes >= 180 && data.dailySleepGoalMinutes <= 960 &&
+             data.restingHeartRateTarget is int && data.restingHeartRateTarget >= 35 && data.restingHeartRateTarget <= 140;
+    }
+
+    function isValidHydrationLog(data, userId) {
+      return data.userId == userId &&
+             data.amountMl is int && data.amountMl >= 10 && data.amountMl <= 5000 &&
+             data.effectiveHydrationMl is int && data.effectiveHydrationMl >= 0 && data.effectiveHydrationMl <= 6000 &&
+             data.drinkType in ['water', 'sparkling', 'tea', 'coffee', 'isotonic', 'juice', 'soup'] &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 120)) &&
+             isValidDateKey(data.dateKey) &&
+             data.loggedAtMillis is int && data.loggedAtMillis > 0;
+    }
+
+    function isValidHeartRateReading(data, userId) {
+      return data.userId == userId &&
+             data.bpm is int && data.bpm >= 30 && data.bpm <= 240 &&
+             data.spo2Percent is int && data.spo2Percent >= 0 && data.spo2Percent <= 100 &&
+             data.hrvMs is int && data.hrvMs >= 0 && data.hrvMs <= 300 &&
+             data.zone in ['resting', 'fat_burn', 'cardio', 'peak'] &&
+             data.sourceDevice is string && data.sourceDevice.size() >= 1 && data.sourceDevice.size() <= 80 &&
+             data.sourceOs in ['fitcloudpro', 'wear_os', 'watchos_bridge', 'harmony_os', 'zepp_os', 'health_connect', 'manual'] &&
+             isValidDateKey(data.dateKey) &&
+             data.recordedAtMillis is int && data.recordedAtMillis > 0;
+    }
+
+    function isValidSleepSession(data, userId) {
+      return data.userId == userId &&
+             isValidDateKey(data.dateKey) &&
+             data.totalMinutes is int && data.totalMinutes >= 1 && data.totalMinutes <= 1440 &&
+             data.deepMinutes is int && data.deepMinutes >= 0 && data.deepMinutes <= 1440 &&
+             data.lightMinutes is int && data.lightMinutes >= 0 && data.lightMinutes <= 1440 &&
+             data.remMinutes is int && data.remMinutes >= 0 && data.remMinutes <= 1440 &&
+             data.awakeMinutes is int && data.awakeMinutes >= 0 && data.awakeMinutes <= 1440 &&
+             data.qualityScore is int && data.qualityScore >= 0 && data.qualityScore <= 100 &&
+             data.avgBpm is int && data.avgBpm >= 30 && data.avgBpm <= 200 &&
+             data.sourceDevice is string && data.sourceDevice.size() >= 1 && data.sourceDevice.size() <= 80 &&
+             data.startTimeMillis is int && data.startTimeMillis > 0 &&
+             data.endTimeMillis is int && data.endTimeMillis >= data.startTimeMillis;
+    }
+
+    function isValidDailyActivity(data, userId) {
+      return data.userId == userId &&
+             isValidDateKey(data.dateKey) &&
+             data.steps is int && data.steps >= 0 && data.steps <= 200000 &&
+             data.activeMinutes is int && data.activeMinutes >= 0 && data.activeMinutes <= 1440 &&
+             data.caloriesBurned is int && data.caloriesBurned >= 0 && data.caloriesBurned <= 20000 &&
+             data.distanceMeters is int && data.distanceMeters >= 0 && data.distanceMeters <= 500000 &&
+             data.movePoints is int && data.movePoints >= 0 && data.movePoints <= 10000 &&
+             data.sourceOs in ['fitcloudpro', 'wear_os', 'watchos_bridge', 'harmony_os', 'zepp_os', 'health_connect', 'phone_sensor'];
+    }
+
+    function isValidWatchDevice(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.macOrAddress is string && data.macOrAddress.size() >= 1 && data.macOrAddress.size() <= 80 &&
+             data.osType in ['fitcloudpro', 'wear_os', 'watchos_bridge', 'harmony_os', 'zepp_os', 'garmin_connect'] &&
+             data.protocol in ['ble_gatt', 'health_connect', 'rest_webhook', 'companion_sync'] &&
+             data.batteryPercent is int && data.batteryPercent >= 0 && data.batteryPercent <= 100 &&
+             data.firmwareVersion is string && data.firmwareVersion.size() <= 40 &&
+             data.realtimeHrEnabled is bool &&
+             data.autoSyncEnabled is bool &&
+             data.lastSyncMillis is int && data.lastSyncMillis >= 0;
+    }
+
+    // --- Collection Rules ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'languageCode', 'gender', 'heightCm', 'weightKg', 'lifestyleLevel', 'workIntensity', 'onboardingCompleted', 'dailyWaterGoalMl', 'dailyStepsGoal', 'dailySleepGoalMinutes', 'restingHeartRateTarget', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'languageCode', 'gender', 'heightCm', 'weightKg', 'lifestyleLevel', 'workIntensity', 'onboardingCompleted', 'dailyWaterGoalMl', 'dailyStepsGoal', 'dailySleepGoalMinutes', 'restingHeartRateTarget', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'languageCode', 'gender', 'heightCm', 'weightKg', 'lifestyleLevel', 'workIntensity', 'onboardingCompleted', 'dailyWaterGoalMl', 'dailyStepsGoal', 'dailySleepGoalMinutes', 'restingHeartRateTarget', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /hydration_logs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().keys().hasAll(['userId', 'amountMl', 'effectiveHydrationMl', 'drinkType', 'dateKey', 'loggedAtMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'amountMl', 'effectiveHydrationMl', 'drinkType', 'note', 'dateKey', 'loggedAtMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidHydrationLog(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidHydrationLog(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['amountMl', 'effectiveHydrationMl', 'drinkType', 'note', 'dateKey', 'loggedAtMillis', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      match /heart_rate_readings/{readingId} {
+        allow get: if isOwner(userId) && isValidId(readingId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(readingId) &&
+                         incoming().keys().hasAll(['userId', 'bpm', 'spo2Percent', 'hrvMs', 'zone', 'sourceDevice', 'sourceOs', 'dateKey', 'recordedAtMillis', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'bpm', 'spo2Percent', 'hrvMs', 'zone', 'sourceDevice', 'sourceOs', 'dateKey', 'recordedAtMillis', 'createdAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidHeartRateReading(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(readingId);
+      }
+
+      match /sleep_sessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(sessionId) &&
+                         incoming().keys().hasAll(['userId', 'dateKey', 'totalMinutes', 'deepMinutes', 'lightMinutes', 'remMinutes', 'awakeMinutes', 'qualityScore', 'avgBpm', 'sourceDevice', 'startTimeMillis', 'endTimeMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateKey', 'totalMinutes', 'deepMinutes', 'lightMinutes', 'remMinutes', 'awakeMinutes', 'qualityScore', 'avgBpm', 'sourceDevice', 'startTimeMillis', 'endTimeMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidSleepSession(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(sessionId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidSleepSession(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateKey', 'totalMinutes', 'deepMinutes', 'lightMinutes', 'remMinutes', 'awakeMinutes', 'qualityScore', 'avgBpm', 'sourceDevice', 'startTimeMillis', 'endTimeMillis', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(sessionId);
+      }
+
+      match /activity_daily/{dateKey} {
+        allow get: if isOwner(userId) && isValidDateKey(dateKey);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidDateKey(dateKey) &&
+                         incoming().dateKey == dateKey &&
+                         incoming().keys().hasAll(['userId', 'dateKey', 'steps', 'activeMinutes', 'caloriesBurned', 'distanceMeters', 'movePoints', 'sourceOs', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateKey', 'steps', 'activeMinutes', 'caloriesBurned', 'distanceMeters', 'movePoints', 'sourceOs', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDailyActivity(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidDateKey(dateKey) &&
+                         incoming().userId == existing().userId &&
+                         incoming().dateKey == existing().dateKey &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDailyActivity(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['steps', 'activeMinutes', 'caloriesBurned', 'distanceMeters', 'movePoints', 'sourceOs', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidDateKey(dateKey);
+      }
+
+      match /watch_devices/{deviceId} {
+        allow get: if isOwner(userId) && isValidId(deviceId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(deviceId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'macOrAddress', 'osType', 'protocol', 'batteryPercent', 'firmwareVersion', 'realtimeHrEnabled', 'autoSyncEnabled', 'lastSyncMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'macOrAddress', 'osType', 'protocol', 'batteryPercent', 'firmwareVersion', 'realtimeHrEnabled', 'autoSyncEnabled', 'lastSyncMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWatchDevice(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(deviceId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWatchDevice(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'macOrAddress', 'osType', 'protocol', 'batteryPercent', 'firmwareVersion', 'realtimeHrEnabled', 'autoSyncEnabled', 'lastSyncMillis', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(deviceId);
+      }
+    }
+  }
+}
